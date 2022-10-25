@@ -207,3 +207,7 @@ def getMyRecipe(request):
 
         # queryset_json = serializers.serialize('json', result)
         return JsonResponse(json_result, status=200)
+
+@csrf_exempt
+def test():
+    print("git test")
