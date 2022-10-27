@@ -187,26 +187,19 @@ def getMyRecipe(request):
         result = {}
         total_recipe_list = []
 
+        # 재료들 하나하나 검사
         for i in datalist.values_list():
-            # 중요도는 상 이면서, 그게 가지고있는 재료라면
+            # 재료가 레시피에서 중요도는 상 이면서, 그게 가지고있는 재료라면
             if recipe_item_list.objects.filter(item_name=i[2], item_importance='상').exists():
-                obj = recipe_item_list.objects.get(item_name=i[2], item_importance='상')
-                # a = obj.recipe_name
-                print(obj)
-                json_result = serializers.serialize('json', obj)
-                print(json_result)
-                total_recipe_list.append(json_result)
-                print(total_recipe_list)
-
-                # recipe = {"recipe_name": obj.recipe_name}
-                # print(recipe)
-                # total_recipe_list.append(recipe)
+                obj = recipe_item_list.objects.filter(item_name=i[2], item_importance='상').values()
+                for j in obj.values_list():
+                    item = {'recipe_name': j[1]}
+                    total_recipe_list.append(item)
 
         result['recipe_list'] = total_recipe_list
         print(result)
+        return JsonResponse(result, status=200)
 
-        # queryset_json = serializers.serialize('json', result)
-        return JsonResponse(json_result, status=200)
 
 @csrf_exempt
 def test():
