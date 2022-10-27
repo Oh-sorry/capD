@@ -81,9 +81,9 @@ def textrunning(request):
 		이런모양임
         """
         # 요청받은 json 받음
-        data2 = JSONParser().parse(request)
+        data = JSONParser().parse(request)
         # json에 있는 사용자의 id를 userid에 저장
-        userid = data2['user']
+        userid = data['userid']
 
         # json에서 word라는 배열 데이터를 testdata.json에 씀
         with open('ml/dataset/testdata/testdata.json', 'w', encoding='utf-8') as f:
@@ -203,5 +203,37 @@ def getMyRecipe(request):
 
 
 @csrf_exempt
-def test():
-    print("git test")
+def saveItem(request):
+    if request.method != 'POST':
+        return JsonResponse({"msg": "not post"}, status=201)
+    else:
+        data = JSONParser().parse(request)
+        userid = data['userid']
+        result = {'userid': userid}
+        print(result)
+
+        for a in data['word']:
+            # pre_data에 있는 재료가 개발자가 저장한DB의 아이탬명들과 일치하는지의 여부를 체크
+            if item_list.objects.filter(item_name=a['item_name']).exists():
+                print("item_list에 아이탬이존재함")
+                # 냉장고에 이미있는 아이탬일경우를 체크
+                if refrigerator_item.objects.filter(item_name=a['item_name'], userid=userid).exists():
+                    obj = refrigerator_item.objects.get(item_name=a['item_name'], userid=result['userid'])
+                    obj.item_counts += 1
+                    obj.save()
+                    # refrigerator_item.objects.filter(item_name=data[a]['item_name']).update(item_counts)
+                else:
+                    print("냉장고에는 아이탬이 존재하지않음")
+                    result['item_name'] = a['item_name']
+                    print(result)
+                    result['insert_date'] = ''
+                    result['item_counts'] = 1
+                # 왜내가 한개씩 저장하고, 또 초기화해서 저장하게했는지는 모르겠지만.. 건들진않겠다....
+                # {'userid':'사용자아이디','item_name':'학습되서나온 item명'}이 저장
+                serializer = RefrigeratorItemSerializer(data=result)
+                if serializer.is_valid():
+                    serializer.save()
+            else:
+                print("없는데이터입니다")
+
+        return JsonResponse({"msg": "save"}, status=200)
