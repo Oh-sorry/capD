@@ -197,7 +197,8 @@ def getMyRecipe(request):
                     total_recipe_list.append(item)
 
         result['recipe_list'] = total_recipe_list
-        print(result)
+        # json_val = json.dumps(result, sort_keys=True, indent=2, ensure_ascii=False, default=str)
+        # print(json_val)
         return JsonResponse(result, status=200)
 
 
