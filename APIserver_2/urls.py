@@ -12,4 +12,6 @@ urlpatterns = [
     path('textrunning/', views.textrunning),
     path('getMyRefrigerator/', views.getMyRefrigerator),
     path('getMyRecipe/', views.getMyRecipe),
+    path('saveItem/',views.saveItem),
+    path('removeItem/',views.removeItem),
 ]

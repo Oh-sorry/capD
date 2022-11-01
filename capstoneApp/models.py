@@ -28,7 +28,7 @@ class item_list(models.Model):
 #냉장고DB
 class refrigerator_item(models.Model):
     userid = models.ForeignKey('userinfo', on_delete=models.CASCADE, db_column='userid')
-    item_name = models.ForeignKey('item_list', on_delete=models.CASCADE, db_column='item_id')
+    item_name = models.ForeignKey('item_list', on_delete=models.CASCADE, db_column='item_name')
     insert_date = models.DateField(auto_now_add=True, blank=True)
     item_counts = models.IntegerField(db_column='item_counts', null=False)
 
