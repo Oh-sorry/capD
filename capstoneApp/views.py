@@ -87,7 +87,7 @@ def textrunning(request):
 
         # json에서 word라는 배열 데이터를 testdata.json에 씀
         with open('ml/dataset/testdata/testdata.json', 'w', encoding='utf-8') as f:
-            json.dump(data2['word'], f, ensure_ascii=False, indent=4)
+            json.dump(data['word'], f, ensure_ascii=False, indent=4)
 
         """
         앞에 0704.py는 실행시키는곳
@@ -115,38 +115,8 @@ def textrunning(request):
 
         # pre_data의 길이만큼 반복을수행
         # data는 지금 배열형식[{},{},{}]
-        for a in range(0, len(data)):
-            result = {'userid': userid['userid']}
 
-            # pre_data에 있는 재료가 개발자가 저장한DB의 아이탬명들과 일치하는지의 여부를 체크
-            if item_list.objects.filter(item_name=data[a]["item_name"]).exists():
-                print("item_list에 아이탬이존재함")
-                # 냉장고에 이미있는 아이탬일경우를 체크
-                if refrigerator_item.objects.filter(item_name=data[a]['item_name'], userid=result['userid']).exists():
-                    obj = refrigerator_item.objects.get(item_name=data[a]['item_name'], userid=result['userid'])
-                    obj.item_counts += 1
-                    obj.save()
-                    # refrigerator_item.objects.filter(item_name=data[a]['item_name']).update(item_counts)
-                else:
-                    print("냉장고에는 아이탬이 존재하지않음")
-                    result['item_name'] = data[a]['item_name']
-                    print(result)
-                    result['insert_date'] = ''
-                    result['item_counts'] = 1
-                # 왜내가 한개씩 저장하고, 또 초기화해서 저장하게했는지는 모르겠지만.. 건들진않겠다....
-                # {'userid':'사용자아이디','item_name':'학습되서나온 item명'}이 저장
-                serializer = RefrigeratorItemSerializer(data=result)
-                if serializer.is_valid():
-                    serializer.save()
-            else:
-                print("없는데이터입니다")
-
-        # 모두 저장하고, 잘됬으면 최종저장완료하고, 응답전송
-        if serializer.is_valid():
-            serializer.save()
-            return JsonResponse({'code': '0000', "msg": '보내짐'}, status=200)
-        else:
-            return JsonResponse({'code': '0001', "msg": '보내지긴했지만 null'}, status=200)
+        result = {'userid': userid['userid']}
 
 
 # 내 냉장고 데이터 전송
@@ -237,3 +207,15 @@ def saveItem(request):
                 print("없는데이터입니다")
 
         return JsonResponse({"msg": "save"}, status=200)
+
+
+@csrf_exempt
+def removeItem(request):
+    if request.method != 'POST':
+        return JsonResponse({"code": "0001"}, status=201)
+    else:
+        data = JSONParser().parse(request)
+        if refrigerator_item.objects.filter(userid=data['userid'], item_name=data['item_name']).exists():
+            obj = refrigerator_item.objects.filter(userid=data['userid'], item_name=data['item_name'])
+            obj.delete()
+            return JsonResponse({"code": "0000"}, status=200)
