@@ -1,4 +1,3 @@
-
 from django.contrib import admin
 from django.urls import path, include
 from capstoneApp import views
@@ -12,6 +11,7 @@ urlpatterns = [
     path('textrunning/', views.textrunning),
     path('getMyRefrigerator/', views.getMyRefrigerator),
     path('getMyRecipe/', views.getMyRecipe),
-    path('saveItem/',views.saveItem),
-    path('removeItem/',views.removeItem),
+    path('saveItem/', views.saveItem),
+    path('removeItem/', views.removeItem),
+    path('updateItem/', views.updateItem),
 ]

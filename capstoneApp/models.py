@@ -48,7 +48,8 @@ class recipe_list(models.Model):
 class recipe_item_list(models.Model):
     recipe_name = models.ForeignKey('recipe_list', on_delete=models.CASCADE, db_column='recipe_name')
     item_name = models.ForeignKey('item_list', on_delete=models.CASCADE, db_column='item_name')
-    item_importance = models.CharField(max_length=20, null=False)
+    item_points = models.FloatField(default=0.0)
+    item_importance = models.CharField(max_length=20)
 
 
     class Meta:

@@ -13,7 +13,7 @@ import pickle
 from konlpy.tag import Okt
 from scipy.sparse import csr_matrix
 
-model_path = "ml/models/model_0704.pickle"
+model_path = "ml/models/model(logistic)_0710.pickle"
 
 with open(model_path, 'rb') as file:
     load_tfidfvect = pickle.load(file)

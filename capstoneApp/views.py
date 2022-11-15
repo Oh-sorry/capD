@@ -69,54 +69,28 @@ def textrunning(request):
         return JsonResponse({"msg": 'connection fail'}, status=500)
 
     else:
-        """
-        전송되는 데이터
-        {   "user": {"userid": "test123"},
-            "word": [
-                        {"0":"[고추장][라라][어어][ㅋ]"},
-				        {"1":"ㅁㄴㅇㅇㄴㅁㄴ"},
-				        {"2":"[잘볶은][밀가루]"}
-				    ]
-		}
-		이런모양임
-        """
         # 요청받은 json 받음
         data = JSONParser().parse(request)
         # json에 있는 사용자의 id를 userid에 저장
-        userid = data['userid']
+        userid = data['user']['userid']
 
         # json에서 word라는 배열 데이터를 testdata.json에 씀
         with open('ml/dataset/testdata/testdata.json', 'w', encoding='utf-8') as f:
             json.dump(data['word'], f, ensure_ascii=False, indent=4)
 
-        """
-        앞에 0704.py는 실행시키는곳
-        testdata.json에 지금 사진속 text들이 저장되있는데 그것을 모듈을 적용해시킴, 그러면 적용된json은 pre_data에 저장됨 
-        """
         subprocess.run('python ml/predict_0704.py ml/dataset/testdata/testdata.json', shell=True)
 
-        # 러닝을 돌린후 나온 데이터는 predict_list에 저장이 됌.
         pre_data = 'ml/dataset/predict_data/predict_list(*).json'
 
         """
         pre_data에 있는 정보들 DB랑 비교하여, 저장된 아이탬이면, refrigerator_item에 추가하기.
         """
         with open(pre_data, "r") as f:
-            data = json.load(f)
+            result_data = json.load(f)
 
-        """
-        차후, 모듈을거친 데이터를 응답으로 보내줄것
-        그후, 사용자가 확인버튼을누르면 json데이터를 보내주고
-        그데이터를 짜로 save해주는 함수를 만들기위해 밑에미리 작성해둠.!
-        """
-        # result_test = {"item_list": data}
-        # print(result_test)
-        # return JsonResponse(result_test, status=200)
-
-        # pre_data의 길이만큼 반복을수행
-        # data는 지금 배열형식[{},{},{}]
-
-        result = {'userid': userid['userid']}
+        result = {}
+        result['word'] = result_data
+        return JsonResponse(result, status=200)
 
 
 # 내 냉장고 데이터 전송
@@ -154,21 +128,27 @@ def getMyRecipe(request):
         data = JSONParser().parse(request)
         datalist = refrigerator_item.objects.filter(userid=data['userid']).values()
 
-        result = {}
-        total_recipe_list = []
-
-        # 재료들 하나하나 검사
+        recipe_list = []
         for i in datalist.values_list():
-            # 재료가 레시피에서 중요도는 상 이면서, 그게 가지고있는 재료라면
-            if recipe_item_list.objects.filter(item_name=i[2], item_importance='상').exists():
+            if recipe_item_list.objects.filter(item_name=i[2], item_importance="상").exists():
                 obj = recipe_item_list.objects.filter(item_name=i[2], item_importance='상').values()
                 for j in obj.values_list():
-                    item = {'recipe_name': j[1]}
-                    total_recipe_list.append(item)
+                    recipe_list.append(j[1])
 
-        result['recipe_list'] = total_recipe_list
-        # json_val = json.dumps(result, sort_keys=True, indent=2, ensure_ascii=False, default=str)
-        # print(json_val)
+        point_list = []
+
+        for i in recipe_list:
+            a = 0
+            for j in datalist.values_list():
+                if recipe_item_list.objects.filter(item_name=j[2], recipe_name=i).exists():
+                    obj = recipe_item_list.objects.filter(item_name=j[2], recipe_name=i).get()
+                    a += obj.item_points
+
+            a = a * 10
+            points_json = {"recipe_name": i, "points": str(a)}
+            point_list.append(points_json)
+        result = {"recipe_list": point_list}
+        print(result)
         return JsonResponse(result, status=200)
 
 
@@ -178,31 +158,25 @@ def saveItem(request):
         return JsonResponse({"msg": "not post"}, status=201)
     else:
         data = JSONParser().parse(request)
-        userid = data['userid']
+        userid = data["user"]["userid"]
         result = {'userid': userid}
-        print(result)
-
         for a in data['word']:
             # pre_data에 있는 재료가 개발자가 저장한DB의 아이탬명들과 일치하는지의 여부를 체크
             if item_list.objects.filter(item_name=a['item_name']).exists():
-                print("item_list에 아이탬이존재함")
                 # 냉장고에 이미있는 아이탬일경우를 체크
-                if refrigerator_item.objects.filter(item_name=a['item_name'], userid=userid).exists():
-                    obj = refrigerator_item.objects.get(item_name=a['item_name'], userid=result['userid'])
+                if refrigerator_item.objects.filter(item_name=a["item_name"], userid=userid).exists():
+                    obj = refrigerator_item.objects.get(item_name=a["item_name"], userid=result["userid"])
                     obj.item_counts += 1
                     obj.save()
-                    # refrigerator_item.objects.filter(item_name=data[a]['item_name']).update(item_counts)
                 else:
                     print("냉장고에는 아이탬이 존재하지않음")
                     result['item_name'] = a['item_name']
                     print(result)
                     result['insert_date'] = ''
                     result['item_counts'] = 1
-                # 왜내가 한개씩 저장하고, 또 초기화해서 저장하게했는지는 모르겠지만.. 건들진않겠다....
-                # {'userid':'사용자아이디','item_name':'학습되서나온 item명'}이 저장
-                serializer = RefrigeratorItemSerializer(data=result)
-                if serializer.is_valid():
-                    serializer.save()
+                    serializer = RefrigeratorItemSerializer(data=result)
+                    if serializer.is_valid():
+                        serializer.save()
             else:
                 print("없는데이터입니다")
 
@@ -218,4 +192,19 @@ def removeItem(request):
         if refrigerator_item.objects.filter(userid=data['userid'], item_name=data['item_name']).exists():
             obj = refrigerator_item.objects.filter(userid=data['userid'], item_name=data['item_name'])
             obj.delete()
+            return JsonResponse({"code": "0000"}, status=200)
+
+
+@csrf_exempt
+def updateItem(request):
+    if request.method != 'POST':
+        return JsonResponse({"code": "0001"}, status=201)
+    else:
+        data = JSONParser().parse(request)
+        if refrigerator_item.objects.filter(userid=data['userid'], item_name=data['old_name'],
+                                            item_counts=data["old_count"]).exists():
+            obj = refrigerator_item.objects.filter(userid=data['userid'], item_name=data['old_name'],
+                                                   item_counts=data["old_count"])
+            obj.update(item_counts=data['update_count'], item_name=data['update_name'])
+
             return JsonResponse({"code": "0000"}, status=200)
