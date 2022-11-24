@@ -14,4 +14,8 @@ urlpatterns = [
     path('saveItem/', views.saveItem),
     path('removeItem/', views.removeItem),
     path('updateItem/', views.updateItem),
+    path('getRecipeProcess/', views.getRecipeProcess),
+    path('useRecipe/', views.useRecipe),
+    path('userAddItem/', views.userAddItem),
+
 ]

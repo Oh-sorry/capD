@@ -32,10 +32,8 @@ def login(request):
         data = JSONParser().parse(request)
         if userinfo.objects.filter(userid=data['userid']).exists():
             obj = userinfo.objects.get(userid=data['userid'])
-            print(obj)
             if obj.password == data['password']:
                 str = data['userid']
-                print(str)
                 return JsonResponse({'code': '0000', 'msg': '로그인 성공'}, status=200)
             else:
                 return JsonResponse({'code': '0001', 'msg': '비밀번호 불일치'}, status=200)
@@ -54,7 +52,7 @@ def signup(request):
         elif len(data['password']) < 6:
             return JsonResponse({'code': '0001', 'msg': '비밀번호를 6자 이상으로 설정해주세요.'}, status=200)
         else:
-            print(data)
+
             serializer = UserinfoSerializer(data=data)
             if serializer.is_valid():
                 serializer.save()
@@ -107,17 +105,17 @@ def getMyRefrigerator(request):
     total_item = []
 
     for a in datalist.values_list():
+        if a[4] > 0:
+            item = {"item_name": a[2], "item_date": a[3], "item_counts": a[4]}
+            total_item.append(item)
+
         # item에 이름,개수,날자를 넣어서 배열에넣어줌
-        item = {"item_name": a[2], "item_date": a[3], "item_counts": a[4]}
-        total_item.append(item)
 
     # result라는 json에 item이라는 명으로 []하나 만들어줘서 거기에 total_item배열을 넣음
     result["items"] = total_item
 
     # result to json
     json_val = json.dumps(result, sort_keys=True, indent=2, ensure_ascii=False, default=str)
-
-    print(json_val)
 
     return JsonResponse(result, status=200)
 
@@ -128,27 +126,34 @@ def getMyRecipe(request):
         data = JSONParser().parse(request)
         datalist = refrigerator_item.objects.filter(userid=data['userid']).values()
 
+        # 상이 포함된 레시피는 아래 배열에 들어가게 됌.
         recipe_list = []
+
         for i in datalist.values_list():
-            if recipe_item_list.objects.filter(item_name=i[2], item_importance="상").exists():
-                obj = recipe_item_list.objects.filter(item_name=i[2], item_importance='상').values()
-                for j in obj.values_list():
-                    recipe_list.append(j[1])
+            if refrigerator_item.objects.filter(item_counts=0, item_name=i[2]).exists():
+                print("개수 0")
+            else:
+                if recipe_item_list.objects.filter(item_name=i[2], item_importance="상").exists():
+                    obj = recipe_item_list.objects.filter(item_name=i[2], item_importance='상').values()
+                    print(obj)
+                    for j in obj.values_list():
+                        recipe_list.append(j[1])
 
         point_list = []
 
         for i in recipe_list:
             a = 0
             for j in datalist.values_list():
-                if recipe_item_list.objects.filter(item_name=j[2], recipe_name=i).exists():
+                if refrigerator_item.objects.filter(item_name=j[2], item_counts=0).exists():
+                    print("개수가 0개")
+                elif recipe_item_list.objects.filter(item_name=j[2], recipe_name=i).exists():
                     obj = recipe_item_list.objects.filter(item_name=j[2], recipe_name=i).get()
                     a += obj.item_points
-
             a = a * 10
             points_json = {"recipe_name": i, "points": str(a)}
             point_list.append(points_json)
         result = {"recipe_list": point_list}
-        print(result)
+
         return JsonResponse(result, status=200)
 
 
@@ -169,10 +174,8 @@ def saveItem(request):
                     obj.item_counts += 1
                     obj.save()
                 else:
-                    print("냉장고에는 아이탬이 존재하지않음")
                     result['item_name'] = a['item_name']
-                    print(result)
-                    result['insert_date'] = ''
+                    # result['insert_date'] = ''
                     result['item_counts'] = 1
                     serializer = RefrigeratorItemSerializer(data=result)
                     if serializer.is_valid():
@@ -206,5 +209,77 @@ def updateItem(request):
             obj = refrigerator_item.objects.filter(userid=data['userid'], item_name=data['old_name'],
                                                    item_counts=data["old_count"])
             obj.update(item_counts=data['update_count'], item_name=data['update_name'])
-
             return JsonResponse({"code": "0000"}, status=200)
+
+
+@csrf_exempt
+def getRecipeProcess(request):
+    if request.method != "POST":
+        return JsonResponse({"code": "0001"}, status=201)
+    else:
+        data = JSONParser().parse(request)
+        if recipe_process.objects.filter(recipe_name=data['recipename']).exists():
+            RecipeProcess = recipe_process.objects.filter(recipe_name=data['recipename']).values()
+            result_ary = []
+            for i in RecipeProcess:
+                json_datas = {"order": i['order'], "process": i['process']}
+                result_ary.append(json_datas)
+
+            need_items = []
+            obj = recipe_item_list.objects.filter(recipe_name=data['recipename']).values()
+            for i in obj:
+                need_items.append(i['item_name_id'])
+            print(need_items)
+            total_result = {"need_items": need_items, "processlist": result_ary}
+            return JsonResponse(total_result, status=200)
+        else:
+            return JsonResponse({"code": "0001"}, status=201)
+
+
+@csrf_exempt
+def useRecipe(request):
+    if request.method != 'POST':
+        return JsonResponse({"code": "0001"}, status=201)
+    else:
+        data = JSONParser().parse(request)
+        recipe_items = recipe_item_list.objects.filter(recipe_name=data['recipename']).values_list('item_name',
+                                                                                                   flat=True)
+        for i in recipe_items:
+            if refrigerator_item.objects.filter(userid=data['userid'], item_name=i).exists():
+                obj = refrigerator_item.objects.get(userid=data['userid'], item_name=i)
+                if obj.item_counts >= 0:
+                    obj.item_counts -= 1
+                    obj.save()
+
+        return JsonResponse({"code": "0000"}, status=200)
+
+
+@csrf_exempt
+def userAddItem(request):
+    if request.method != 'POST':
+        return JsonResponse({"code": "0001"}, status=201)
+    else:
+        data = JSONParser().parse(request)
+        userid = data["user"]["userid"]
+        result = {'userid': userid}
+        for a in data['items']:
+            # pre_data에 있는 재료가 개발자가 저장한DB의 아이탬명들과 일치하는지의 여부를 체크
+            if item_list.objects.filter(item_name=a['item_name']).exists():
+                # 냉장고에 이미있는 아이탬일경우를 체크
+                if refrigerator_item.objects.filter(item_name=a["item_name"], userid=userid).exists():
+                    obj = refrigerator_item.objects.get(item_name=a["item_name"], userid=result["userid"])
+                    cnt = a['item_count']
+                    cnt = int(cnt)
+                    obj.item_counts = obj.item_counts + cnt
+                    obj.save()
+                else:
+                    result['item_name'] = a['item_name']
+                    result['insert_date'] = ''
+                    result['item_counts'] = a['item_count']
+                    serializer = RefrigeratorItemSerializer(data=result)
+                    if serializer.is_valid():
+                        serializer.save()
+            else:
+                print("없는데이터입니다")
+
+    return JsonResponse({"code": "0000"}, status=200)
