@@ -1,62 +1,26 @@
 [
     {
         "item_id": 0,
-        "item_name": "쌀"
-    },
-    {
-        "item_id": 1,
-        "item_name": "쌀"
-    },
-    {
-        "item_id": 2,
         "item_name": "돼지고기"
     },
     {
-        "item_id": 3,
-        "item_name": "쌀"
-    },
-    {
-        "item_id": 4,
+        "item_id": 1,
         "item_name": "닭"
     },
     {
-        "item_id": 5,
-        "item_name": "쌀"
-    },
-    {
-        "item_id": 6,
-        "item_name": "쌀"
-    },
-    {
-        "item_id": 7,
+        "item_id": 2,
         "item_name": "김치"
     },
     {
-        "item_id": 8,
-        "item_name": "쌀"
-    },
-    {
-        "item_id": 9,
-        "item_name": "쌀"
-    },
-    {
-        "item_id": 10,
+        "item_id": 3,
         "item_name": "계란"
     },
     {
-        "item_id": 11,
+        "item_id": 4,
         "item_name": "쌀"
     },
     {
-        "item_id": 12,
-        "item_name": "쌀"
-    },
-    {
-        "item_id": 13,
-        "item_name": "쌀"
-    },
-    {
-        "item_id": 14,
+        "item_id": 5,
         "item_name": "두부"
     }
 ]

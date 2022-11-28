@@ -10,7 +10,7 @@ import os
 import pandas as pd
 import numpy as np
 import pickle
-
+import re
 from konlpy.tag import Okt
 from scipy.sparse import csr_matrix
 
@@ -46,17 +46,34 @@ def test_dataset(path):
     else:
         print("Error : input data must be \'.txt\' or \'.json\'")
 
+    # jvm_path = "/Library/Java/JavaVirtualMachines/zulu-15.jdk/Contents/Home/bin/java"
     jvm_path = "/Library/Java/JavaVirtualMachines/zulu-15.jdk/Contents/MacOS/libjli.dylib"
 
     okt = Okt(jvmpath=jvm_path)
     test_data = test_data.assign(PRDLST_CORPUS=np.nan)
+    test_data2 = test_data.assign(PRDLST_CORPUS=np.nan)
 
     for i in range(0, len(test_data)):
         str_i = str(i)
         PRDLST_NM = okt.morphs(test_data[str_i][i])  # morphs 형태소 추출
         test_data["PRDLST_CORPUS"][i] = " ".join(PRDLST_NM)
 
-    return test_data
+    # 여기부터 신현호가 짠 코드 원래리턴은 test_data임
+    zzz = []
+    for i in test_data["PRDLST_CORPUS"]:
+        I = str(i)
+        for char in i:
+            if char in "0|1|2|3|4|5|6|7|8|9|*|[|]|,|g|kg|L|":
+                I = I.replace(char, "")
+        if I in "                                                                                   ":
+            I.strip('                                                                                ')
+        else:
+            print(I)
+            print(len(I))
+            zzz.append(I)
+
+    df = pd.DataFrame({"PRDLST_CORPUS": zzz})
+    return df
 
 
 def testData_return_dtm(tfidfvect, data):
@@ -90,6 +107,7 @@ def y_predict_save(y_predict):
     data = []
     # data['item_list'] = []
     for i in range(0, len(y_predict)):
+        # 이미 학습을 거치고 나온 데이터를 넣어주는거
         data.append({
             "item_id": i,
             "item_name": y_predict[i]

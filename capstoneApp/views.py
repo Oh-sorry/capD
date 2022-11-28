@@ -69,8 +69,8 @@ def textrunning(request):
     else:
         # 요청받은 json 받음
         data = JSONParser().parse(request)
+        print(data)
         # json에 있는 사용자의 id를 userid에 저장
-        userid = data['user']['userid']
 
         # json에서 word라는 배열 데이터를 testdata.json에 씀
         with open('ml/dataset/testdata/testdata.json', 'w', encoding='utf-8') as f:
@@ -144,7 +144,7 @@ def getMyRecipe(request):
         for i in recipe_list:
             a = 0
             for j in datalist.values_list():
-                if refrigerator_item.objects.filter(item_name=j[2], item_counts=0).exists():
+                if refrigerator_item.objects.filter(item_name=j[2], item_counts=0,userid=data['userid']).exists():
                     print("개수가 0개")
                 elif recipe_item_list.objects.filter(item_name=j[2], recipe_name=i).exists():
                     obj = recipe_item_list.objects.filter(item_name=j[2], recipe_name=i).get()
@@ -209,31 +209,60 @@ def updateItem(request):
             obj = refrigerator_item.objects.filter(userid=data['userid'], item_name=data['old_name'],
                                                    item_counts=data["old_count"])
             obj.update(item_counts=data['update_count'], item_name=data['update_name'])
+            
             return JsonResponse({"code": "0000"}, status=200)
 
 
 @csrf_exempt
 def getRecipeProcess(request):
     if request.method != "POST":
-        return JsonResponse({"code": "0001"}, status=201)
+        return JsonResponse({"code": "0002"}, status=201)
     else:
         data = JSONParser().parse(request)
+        result_ary = []
+        # 레시피 과정 테이블에 해당 레시피가 존재하면.
         if recipe_process.objects.filter(recipe_name=data['recipename']).exists():
             RecipeProcess = recipe_process.objects.filter(recipe_name=data['recipename']).values()
-            result_ary = []
+
+            # 레시피 과정을 순차적으로 담음
             for i in RecipeProcess:
                 json_datas = {"order": i['order'], "process": i['process']}
                 result_ary.append(json_datas)
 
             need_items = []
+
+            # 필요한 아이탬들 확인하기위해 레시피아이탬 테이블에서 레시피명이 다음과같은것을 가져옴
             obj = recipe_item_list.objects.filter(recipe_name=data['recipename']).values()
             for i in obj:
                 need_items.append(i['item_name_id'])
-            print(need_items)
-            total_result = {"need_items": need_items, "processlist": result_ary}
+
+            # need_items에는 현재 필요한 재료들이 들어가있음.
+
+            # 사용자가 가진 재료와 비교하기위해 haveitem 생성
+            # haveitem = refrigerator_item.objects.get(userid=data['userid'])z
+
+            item_result = []
+            # 해당 재료가있는지 순차적으로 검색
+            for i in need_items:
+                if refrigerator_item.objects.filter(item_name=i, userid=data['userid']).exists():
+                    isHave = refrigerator_item.objects.get(item_name=i, userid=data['userid'])
+                    print(isHave.item_counts)
+                    if isHave.item_counts > 0:
+                        item = {"itemname": i, "have": "1"}
+                        item_result.append(item)
+                    else:
+                        item = {"itemname": i, "have": "0"}
+                        item_result.append(item)
+                else:
+                    item = {"itemname": i, "have": "0"}
+                    item_result.append(item)
+
+            total_result = {"code": "0000", "need_items": item_result, "processlist": result_ary}
+            print(total_result)
             return JsonResponse(total_result, status=200)
         else:
-            return JsonResponse({"code": "0001"}, status=201)
+            # 레시피 과정중에 해당레시피가 존재하지 않으면,
+            return JsonResponse({"code": "0001"}, status=200)
 
 
 @csrf_exempt
